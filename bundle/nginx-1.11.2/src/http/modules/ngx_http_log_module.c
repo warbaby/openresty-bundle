@@ -80,6 +80,7 @@ typedef struct {
     ngx_uint_t                  open_file_cache_min_uses;
 
     ngx_flag_t                  escape_non_ascii;
+    ngx_flag_t                  escape_none;
 
     ngx_uint_t                  off;        /* unsigned  off:1 */
 } ngx_http_log_loc_conf_t;
@@ -182,6 +183,13 @@ static ngx_command_t  ngx_http_log_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_log_loc_conf_t, escape_non_ascii),
       NULL },
+  
+    { ngx_string("log_escape_none"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_log_loc_conf_t, escape_none),
+      NULL },  
 
       ngx_null_command
 };
@@ -1008,6 +1016,14 @@ ngx_http_log_escape(ngx_http_log_loc_conf_t *lcf, u_char *dst, u_char *src,
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
     };
 
+    if (lcf->escape_none) {
+        if (dst == NULL) {
+            return (uintptr_t) 0;
+        } else {
+            return (uintptr_t) ngx_cpymem(dst, src, size);
+        }
+    }
+
     if (lcf->escape_non_ascii) {
         ngx_memset(&escape[4], 0xff, sizeof(uint32_t) * 4);
 
@@ -1098,6 +1114,7 @@ ngx_http_log_create_loc_conf(ngx_conf_t *cf)
 
     conf->open_file_cache = NGX_CONF_UNSET_PTR;
     conf->escape_non_ascii = NGX_CONF_UNSET;
+    conf->escape_none = NGX_CONF_UNSET;	
 
     return conf;
 }
@@ -1114,6 +1131,7 @@ ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_log_main_conf_t  *lmcf;
 
     ngx_conf_merge_value(conf->escape_non_ascii, prev->escape_non_ascii, 1);
+    ngx_conf_merge_value(conf->escape_none, prev->escape_none, 1);	
 
     if (conf->open_file_cache == NGX_CONF_UNSET_PTR) {
 
